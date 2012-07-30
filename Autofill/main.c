@@ -37,10 +37,14 @@ R/W to GROUND
 #define     BUTTON                BIT3     // Button on P1.3
 #define     BKL                   BIT2     // LCD Back light led on P1.2 
 
+#define NORMAL_MODE               0
+#define LONG_BUTTON_PRESS_MODE    1
+
 #define info_seg_B          0x1080
  
 // How many times have we pushed the button?
 long  buttonPresses = 0;
+int   mode = NORMAL_MODE;
 
 
 void port_init()
@@ -209,12 +213,14 @@ int main()
     P1DIR |= BKL;   // direction is OUT
     P1OUT &= ~BKL;  // turn OFF
     
-    TACCR0 = 12000;				// Count limit (will give about 8 seconds of light)
+    TACCR0 = 2000;				// Count limit (will give about 10 seconds of light)
+    TACCR1 = 5000;
     CCTL0 = 0x00;				// Disable counter interrupts
     TACTL = TASSEL_1 + MC_1 + ID_3 + TACLR;		// Timer A with ACLK/8, count UP, reset counter
 
     
-    // __enable_interrupt();
+    // enable interrupt timer A1;
+    CCTL1 = CCIE;
      
      LINE1;
      string("Druk op knop");
@@ -247,16 +253,35 @@ __interrupt void PORT1_ISR(void)
   P1OUT |= BKL;  // turn ON
   buttonPresses++;
   P1IFG = 0; // clear interrupt
+  
+  TAR = 0;
+  
+  // Set the timer to about 1 second for long press detection
+  mode = LONG_BUTTON_PRESS_MODE;
+  TACCR0 = 200;  
   CCTL0 = CCIE;				// Enable counter interrupts, bit 4=1
   __bic_SR_register_on_exit(LPM0_bits + GIE);   // Wake up the main loop
 }
 
 // Timer interrupt, turn off the LCD
 #pragma vector=TIMERA0_VECTOR
-__interrupt void Timer_A (void) {			
-  P1OUT &= ~BKL;  // turn OFF the BKL
-  CCTL0 = 0x00;					// Disable counter interrupts
-  //__bic_SR_register_on_exit(LPM4_bits + GIE); // Go to sleep mode with clocks disabled (LPM4)         
+__interrupt void Timer_A (void) {
+  
+  if (mode == LONG_BUTTON_PRESS_MODE) {
+    int val = ~P1IN & BUTTON;
+    TACCR0 = 2000;
+    mode = NORMAL_MODE;
+    if (val) { // the user is still pressing the button      
+      buttonPresses = 0;      
+      __bic_SR_register_on_exit(LPM0_bits + GIE);   // Wake up the main loop
+    }
+  } else {  
+    P1OUT &= ~BKL;  // turn OFF the BKL
+    CCTL0 = 0x00;					// Disable counter interrupts
+  }
 }
 
-
+#pragma vector=TIMERA1_VECTOR
+__interrupt void ta1_isr (void) {
+  int a = 5;
+}
