@@ -2,6 +2,9 @@
 
 <workspace>
   <project>
+    <path>$WS_DIR$\Accurate VLO\Accurate VLO.ewp</path>
+  </project>
+  <project>
     <path>$WS_DIR$\Autofill\Autofill.ewp</path>
   </project>
   <batchBuild/>

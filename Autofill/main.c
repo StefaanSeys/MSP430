@@ -9,7 +9,7 @@ In my previous codes, the initialization is not so perfect
 because I deviated from the original specifications...
 But those codes are at least working for me,, Any way,
 now I am providing a better code which includes a
-pseudo_8bit_cmd function since the LCD expects an 8 bit 
+lcd_pseudo_8bit_cmd function since the LCD expects an 8 bit 
 command at first, before entering to 4 bit mode...
  
 -Connections:
@@ -27,177 +27,36 @@ R/W to GROUND
 */
  
 #include <msp430g2231.h>
- 
-#define RS(X)     P1OUT = ((P1OUT & ~(BIT0)) | (X))
-#define EN(X)   P1OUT = ((P1OUT & ~(BIT1)) | (X<<1))
-#define LCD_STROBE do{EN(1);EN(0);}while(0)
-#define databits P1OUT  // P1.7 - D7, ....., P1.4 - D4
-#define LINE1 cmd(0x80)
-#define LINE2 cmd(0xc0)
-#define     BUTTON                BIT3     // Button on P1.3
-#define     BKL                   BIT2     // LCD Back light led on P1.2 
+#include "VLO_Library.h"
+#include "LCD_Library.h" 
+#include "Flash_Library.h"
+
+
+#define BUTTON                    BIT3     // Button on P1.3
+#define LCD_BKL                   BIT2     // LCD Back light led on P1.2 
 
 #define NORMAL_MODE               0
 #define LONG_BUTTON_PRESS_MODE    1
 
-#define info_seg_B          0x1080
+
+// timer constants for ACKL @ VLO/8 and timer @ ACKL/8
+#define TIMER_1_SEC                     125000 / dco_delta    
+#define TIMER_1_MIN                     7500000 / dco_delta
+
+
+
+
  
-// How many times have we pushed the button?
-long  buttonPresses = 0;
+// Global variables
+CountStruct counters;
 int   mode = NORMAL_MODE;
+int   dco_delta = 0;          // dco delta = number of 1MHz cycles in 8 VLO cycles
 
 
 void port_init()
 {
-    P1OUT = 0 ;
     P1DIR = 0xff;
-}
- 
-void data(unsigned char c)
-{
-    RS(1);
-    __delay_cycles(40);  //40 us delay
-    databits = (databits & 0x0f) | (c & 0xf0);
-    LCD_STROBE;
-    databits = (databits & 0x0f) | (c << 4) ;
-    LCD_STROBE;
-}
- 
-void cmd(unsigned char c)
-{
-    RS(0);
-    __delay_cycles(40); //40 us delay
-    databits = (databits & 0x0f) | (c & 0xf0);
-    LCD_STROBE;
-    databits = (databits & 0x0f) | (c << 4) ;
-    LCD_STROBE;
-}
- 
-void pseudo_8bit_cmd(unsigned char c)
-{
-    RS(0);
-    __delay_cycles(15000); //15 ms delay
-    databits = (c & 0xf0);
-    LCD_STROBE;
-}
-void clear(void)
-{
-    cmd(0x01);
-    __delay_cycles(3000); //3 ms delay
-}
- 
-void lcd_init()
-{
-    pseudo_8bit_cmd(0x30); //this command is like 8 bit mode command
-    pseudo_8bit_cmd(0x30); //lcd expect 8bit mode commands at first
-    pseudo_8bit_cmd(0x30); //for more details, check any 16x2 lcd spec
-    pseudo_8bit_cmd(0x20);
-    cmd(0x28);             //4 bit mode command started, set two line
-    cmd(0x0c);             // Make cursorinvisible
-    clear();               // Clear screen
-    cmd(0x6);              // Set entry Mode(auto increment of cursor)
-}
- 
-void string(char *p)
-{
-    while(*p) data(*p++);
-}
-
-char *ltoa(long num, char *str, int radix) {
-  char sign = 0;		
-  char temp[33];  //an int can only be 32 bits long		
-                  //at radix 2 (binary) the string 		
-                  //is at most 16 + 1 null long.
-		
-  int temp_loc = 0;		
-  int digit;		
-  int str_loc = 0;
-		
-		
-  //save sign for radix 10 conversion		
-  if (radix == 10 && num < 0) {		
-      sign = 1;		
-      num = -num;		
-  }
-		
-  
-		
-  //construct a backward string of the number.		
-  do {		
-      digit = (unsigned long)num % radix;		
-      if (digit < 10) 		
-          temp[temp_loc++] = digit + '0';		
-      else		
-          temp[temp_loc++] = digit - 10 + 'A';	
-      num = ((unsigned long)num) / radix;	
-  } while ((unsigned long)num > 0);
-		
-		
-  //now add the sign for radix 10		
-  if (radix == 10 && sign) {		
-      temp[temp_loc] = '-';		
-  } else {		
-      temp_loc--;		
-  }
-		
-		
-		
-  //now reverse the string.		
-  while ( temp_loc >=0 ) {// while there are still chars		
-      str[str_loc++] = temp[temp_loc--];		
-  }
-		
-  str[str_loc] = 0; // add null termination.		
-  return str;
-}
-
-
-// Write counter value to flash info segment B
-void store_counter () {
-  char *flash_ptr;                          // Flash pointer
-  flash_ptr = (char *)info_seg_B;           // Initialize Flash pointer
-  
-  char* count = (char *) &buttonPresses;     // Initialize pointer to counter
-  
-  // Erase the flash segment
-  FCTL1 = FWKEY + ERASE;                    // Set Erase bit
-  FCTL3 = FWKEY;                            // Clear Lock bit
-  *flash_ptr = 0;                           // Dummy write to erase Flash segment
-  while(FCTL3 & BUSY);                      // Wait until erase is complete
-  
-  // Write value to flash
-  FCTL1 = FWKEY + WRT;                      // Set WRT bit for write operation  
-  
-  int i = 0;    
-  for (i=0; i<4; i++) {
-    *flash_ptr = *count;
-    flash_ptr++;
-    count++;
-    while((FCTL3 & BUSY));                    // Wait until write completes
-  } 
-  
-  FCTL1 = FWKEY;                            // Clear WRT bit
-  FCTL3 = FWKEY + LOCK;                     // Set LOCK bit  
-}
-
-// Read the counter value
-void read_counter() {  
-  buttonPresses = *((long *)info_seg_B);  
-}
-
-
-
- 
-int main()
-{
-  WDTCTL = WDTPW + WDTHOLD; // Stop watchdog timer
-  
-  BCSCTL3 |= LFXT1S1; // Use the VLO for the ACLK (~12 kHz)
-  BCSCTL1 |= DIVA_3;  // ACLK divide by 8
     
-    port_init();
-    lcd_init();
-
     // Set up button (P1.3)
     P1DIR &= ~BUTTON;
     P1OUT |= BUTTON;
@@ -205,44 +64,70 @@ int main()
     P1IES |= BUTTON;
     P1IFG &= ~BUTTON;
     P1IE |= BUTTON;
-    
-    // Read the counter value from flash    
-    read_counter();
-    
-    // Set up the BKL (P1.2)
-    P1DIR |= BKL;   // direction is OUT
-    P1OUT &= ~BKL;  // turn OFF
-    
-    TACCR0 = 2000;				// Count limit (will give about 10 seconds of light)
-    TACCR1 = 5000;
-    CCTL0 = 0x00;				// Disable counter interrupts
-    TACTL = TASSEL_1 + MC_1 + ID_3 + TACLR;		// Timer A with ACLK/8, count UP, reset counter
+ 
+    // Set up the LCD Backlight LED (P1.2)
+    P1DIR |= LCD_BKL;   // direction is OUT
+    P1OUT &= ~LCD_BKL;  // turn OFF    
+}
+ 
 
+ 
+int main()
+{
+  WDTCTL = WDTPW + WDTHOLD; // Stop watchdog timer
+  
+  /* Setup the clock */
+  
+  BCSCTL1 = CALBC1_1MHZ;                    // 1MHz cal value
+  DCOCTL = CALDCO_1MHZ;                     // 1MHz cal value
+  
+  dco_delta = TI_measureVLO();              // dco delta = number of
+                                            // 1MHz cycles in 8 ACLK cycles
+  
+  BCSCTL3 |= LFXT1S_2;                      // ACLK = VLO  (~12 MHz)
+  BCSCTL1 |= DIVA_3;                        // ACLK divide by 8
+  
+  /* Setup the Pins on the MCU */
+      
+  lcd_init();    // For some reason, lcd_init has to happen BEFORE port_init !!
+  port_init();
+
+  /* Initiate TimerA */ 
+  
+  CCTL0 = 0x00;				    // Disable counter interrupts
+  TACTL = TASSEL_1 + MC_1 + ID_3 + TACLR;   // Timer A with ACLK/8, count UP, reset counter
+  
+  /* Read the counter values from flash */  
+
+  counters = read_counter();
     
-    // enable interrupt timer A1;
-    CCTL1 = CCIE;
+
      
-     LINE1;
-     string("Druk op knop");
+     LCD_LINE1;
+     lcd_print("Druk op knop");
      
      __bis_SR_register(LPM3_bits + GIE);
      
-     clear();
+     
      
      while (1) {    
-        // display count
-        LINE1;
-        string("Vandaag");
-        string(": ");
-        LINE2;
-        string("Totaal: ");
-        char times[8];
-        ltoa(buttonPresses, times, 10);
-        string(times);
-        // store count in flash
-        store_counter();
-        // go back to sleep
-        __bis_SR_register(LPM3_bits + GIE);
+       // display count
+       char times[8];
+       lcd_clear();
+       LCD_LINE1;
+       lcd_print("2:35");
+       lcd_print("    ");
+       ltoa(counters.total, times, 10);
+       lcd_print(times); 
+       LCD_LINE2;
+       lcd_print("1:        ");        
+       ltoa(counters.day1, times, 10);
+       lcd_print(times);
+
+       // store count in flash
+       store_counter((char *) &counters);
+       // go back to sleep
+       __bis_SR_register(LPM3_bits + GIE);
      }
 }
 
@@ -250,15 +135,17 @@ int main()
 #pragma vector=PORT1_VECTOR
 __interrupt void PORT1_ISR(void)
 { 
-  P1OUT |= BKL;  // turn ON
-  buttonPresses++;
-  P1IFG = 0; // clear interrupt
+  P1OUT |= LCD_BKL;  // turn ON
+  counters.total++;
+  counters.day1++;
+  counters.day2++;
+  P1IFG = 0; // lcd_clear interrupt
   
   TAR = 0;
   
   // Set the timer to about 1 second for long press detection
   mode = LONG_BUTTON_PRESS_MODE;
-  TACCR0 = 200;  
+  TACCR0 = TIMER_1_SEC;  
   CCTL0 = CCIE;				// Enable counter interrupts, bit 4=1
   __bic_SR_register_on_exit(LPM0_bits + GIE);   // Wake up the main loop
 }
@@ -269,19 +156,14 @@ __interrupt void Timer_A (void) {
   
   if (mode == LONG_BUTTON_PRESS_MODE) {
     int val = ~P1IN & BUTTON;
-    TACCR0 = 2000;
+    TACCR0 = TIMER_1_SEC * 5;
     mode = NORMAL_MODE;
     if (val) { // the user is still pressing the button      
-      buttonPresses = 0;      
+      counters.day1 = 0;      
       __bic_SR_register_on_exit(LPM0_bits + GIE);   // Wake up the main loop
     }
   } else {  
-    P1OUT &= ~BKL;  // turn OFF the BKL
+    P1OUT &= ~LCD_BKL;  // turn OFF the LCD_BKL
     CCTL0 = 0x00;					// Disable counter interrupts
   }
-}
-
-#pragma vector=TIMERA1_VECTOR
-__interrupt void ta1_isr (void) {
-  int a = 5;
 }
