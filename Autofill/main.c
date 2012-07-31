@@ -67,7 +67,16 @@ void port_init()
  
     // Set up the LCD Backlight LED (P1.2)
     P1DIR |= LCD_BKL;   // direction is OUT
-    P1OUT &= ~LCD_BKL;  // turn OFF    
+    P1OUT &= ~LCD_BKL;  // turn OFF   
+    
+    P2DIR &= ~BIT6;
+    P2SEL &= ~BIT6;   // don't use this PIN for the crystal
+    P2REN |= BIT6;    // use the pull up or down resistor
+    P2OUT |= BIT6;    // use the pull UP resistor
+    P2IES |= BIT6;    // interrupt from high to low
+    P2IFG &= ~BIT6;   // clear the interrupt flag
+    P2IE  |= BIT6;    // turn on the interrupt
+    
 }
  
 
@@ -139,7 +148,7 @@ __interrupt void PORT1_ISR(void)
   counters.total++;
   counters.day1++;
   counters.day2++;
-  P1IFG = 0; // lcd_clear interrupt
+  P1IFG = 0; // clear interrupt
   
   TAR = 0;
   
@@ -166,4 +175,12 @@ __interrupt void Timer_A (void) {
     P1OUT &= ~LCD_BKL;  // turn OFF the LCD_BKL
     CCTL0 = 0x00;					// Disable counter interrupts
   }
+}
+
+
+#pragma vector=PORT2_VECTOR
+__interrupt void PORT2_ISR(void)
+{
+  P2IFG = 0; // clear interrupt
+  P1OUT |= LCD_BKL;
 }
