@@ -43,14 +43,18 @@ R/W to GROUND
 #define TIMER_1_SEC                     125000 / dco_delta    
 #define TIMER_1_MIN                     7500000 / dco_delta
 
+#define _TIMER_1_HOUR                   480     // nr of min's in 1 hour
+
 
 
 
  
 // Global variables
-CountStruct counters;
-int   mode = NORMAL_MODE;
-int   dco_delta = 0;          // dco delta = number of 1MHz cycles in 8 VLO cycles
+CountStruct counters;             // keeps track of the three counters
+int timer_mode = NORMAL_MODE;     // timer mode
+int dco_delta = 0;                // dco delta = number of 1MHz cycles in 8 VLO cycles
+int min_counter = 0;              // keep track of the nr of min's that have passed since
+                                  // the last low water detection   
 
 
 void port_init()
@@ -153,23 +157,23 @@ __interrupt void PORT1_ISR(void)
   TAR = 0;
   
   // Set the timer to about 1 second for long press detection
-  mode = LONG_BUTTON_PRESS_MODE;
+  timer_mode = LONG_BUTTON_PRESS_MODE;
   TACCR0 = TIMER_1_SEC;  
   CCTL0 = CCIE;				// Enable counter interrupts, bit 4=1
-  __bic_SR_register_on_exit(LPM0_bits + GIE);   // Wake up the main loop
+  __bic_SR_register_on_exit(LPM3_bits);   // Wake up the main loop
 }
 
 // Timer interrupt, turn off the LCD
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void) {
   
-  if (mode == LONG_BUTTON_PRESS_MODE) {
+  if (timer_mode == LONG_BUTTON_PRESS_MODE) {
     int val = ~P1IN & BUTTON;
     TACCR0 = TIMER_1_SEC * 5;
-    mode = NORMAL_MODE;
+    timer_mode = NORMAL_MODE;
     if (val) { // the user is still pressing the button      
       counters.day1 = 0;      
-      __bic_SR_register_on_exit(LPM0_bits + GIE);   // Wake up the main loop
+      __bic_SR_register_on_exit(LPM3_bits);   // Wake up the main loop
     }
   } else {  
     P1OUT &= ~LCD_BKL;  // turn OFF the LCD_BKL
