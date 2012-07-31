@@ -37,13 +37,16 @@ R/W to GROUND
 
 #define NORMAL_MODE               0
 #define LONG_BUTTON_PRESS_MODE    1
+#define TURN_OFF_DISPLAY_MODE     2
 
 
 // timer constants for ACKL @ VLO/8 and timer @ ACKL/8
 #define TIMER_1_SEC                     125000 / dco_delta    
 #define TIMER_1_MIN                     7500000 / dco_delta
 
-#define _TIMER_1_HOUR                   480     // nr of min's in 1 hour
+#define LEVEL_THRESHOLD                 480     // nr of min's in 8 hours
+#define FLASH_THRESHOLD                 1440    // nr of min's in 24 hours
+
 
 
 
@@ -53,8 +56,9 @@ R/W to GROUND
 CountStruct counters;             // keeps track of the three counters
 int timer_mode = NORMAL_MODE;     // timer mode
 int dco_delta = 0;                // dco delta = number of 1MHz cycles in 8 VLO cycles
-int min_counter = 0;              // keep track of the nr of min's that have passed since
-                                  // the last low water detection   
+int level_counter = 0;            // keeps track of the nr of min's that have passed since
+                                  // the last low water detection
+int flash_counter = 0;            // keeps track of the nr of min's since the last flash write   
 
 
 void port_init()
@@ -77,9 +81,10 @@ void port_init()
     P2SEL &= ~BIT6;   // don't use this PIN for the crystal
     P2REN |= BIT6;    // use the pull up or down resistor
     P2OUT |= BIT6;    // use the pull UP resistor
-    P2IES |= BIT6;    // interrupt from high to low
-    P2IFG &= ~BIT6;   // clear the interrupt flag
-    P2IE  |= BIT6;    // turn on the interrupt
+    
+    // TODO: water counter will be installed on BIT7 of P2
+    // Use the interrupt for this port (see earlier versions of code)
+
     
 }
  
@@ -107,8 +112,11 @@ int main()
 
   /* Initiate TimerA */ 
   
+  timer_mode = NORMAL_MODE;
   CCTL0 = 0x00;				    // Disable counter interrupts
   TACTL = TASSEL_1 + MC_1 + ID_3 + TACLR;   // Timer A with ACLK/8, count UP, reset counter
+  TACCR0 = TIMER_1_SEC * 5;                     // Set interval to one minute
+  CCTL0 = CCIE;		                    // Enable the timer
   
   /* Read the counter values from flash */  
 
@@ -137,8 +145,6 @@ int main()
        ltoa(counters.day1, times, 10);
        lcd_print(times);
 
-       // store count in flash
-       store_counter((char *) &counters);
        // go back to sleep
        __bis_SR_register(LPM3_bits + GIE);
      }
@@ -148,18 +154,24 @@ int main()
 #pragma vector=PORT1_VECTOR
 __interrupt void PORT1_ISR(void)
 { 
-  P1OUT |= LCD_BKL;  // turn ON
-  counters.total++;
-  counters.day1++;
-  counters.day2++;
-  P1IFG = 0; // clear interrupt
+  P1IFG = 0;        // clear interrupt
+  P1IE &= ~BUTTON;  // disable interrupts for the button to handle button bounce
   
+  /* Use watchdog timer for button debounce */
+  WDTCTL = WDT_ADLY_16;   // Turn on the watchdog timer to detect long press
+                          // after 16ms*8*32KHz/12KHz = 341ms
+  IFG1 &= ~WDTIFG;        // Clear watchdog timer interrupt flag
+  IE1 |= WDTIE;           // Enable watchdog
+  
+  /* Turn on the LCD BKL */
+  P1OUT |= LCD_BKL;
+    
+  /* Reset TimerA such that the LCD BKL will keep burning */
   TAR = 0;
   
-  // Set the timer to about 1 second for long press detection
+  /* Set the timer to about 1 second for long press detection */
   timer_mode = LONG_BUTTON_PRESS_MODE;
   TACCR0 = TIMER_1_SEC;  
-  CCTL0 = CCIE;				// Enable counter interrupts, bit 4=1
   __bic_SR_register_on_exit(LPM3_bits);   // Wake up the main loop
 }
 
@@ -167,17 +179,44 @@ __interrupt void PORT1_ISR(void)
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void) {
   
-  if (timer_mode == LONG_BUTTON_PRESS_MODE) {
-    int val = ~P1IN & BUTTON;
+  if (timer_mode == LONG_BUTTON_PRESS_MODE) {    
+    timer_mode = TURN_OFF_DISPLAY_MODE;
     TACCR0 = TIMER_1_SEC * 5;
-    timer_mode = NORMAL_MODE;
-    if (val) { // the user is still pressing the button      
+    if (~P1IN & BUTTON) { // the user is still pressing the button      
       counters.day1 = 0;      
       __bic_SR_register_on_exit(LPM3_bits);   // Wake up the main loop
     }
-  } else {  
+  } else if (timer_mode == TURN_OFF_DISPLAY_MODE) {  
     P1OUT &= ~LCD_BKL;  // turn OFF the LCD_BKL
-    CCTL0 = 0x00;					// Disable counter interrupts
+    timer_mode = NORMAL_MODE;
+    TACCR0 = TIMER_1_MIN;    
+  } else { //normal mode
+    
+    /* recalibrate */
+    dco_delta = TI_measureVLO();   
+    
+    
+    /* check state of water level meter */
+    
+    // if closed = low water
+    if (~P2IN & BIT6) { 
+      if (++level_counter == LEVEL_THRESHOLD) {
+        // TODO: Turn on the water valve
+      }
+    // if open = high water = turn off valve and reset counter
+    } else {
+      // TODO: Turn off the water valve
+      level_counter = 0;
+    }
+    
+    
+    /* check state of flash */
+    
+    if (++flash_counter == FLASH_THRESHOLD) {
+       store_counter((char *) &counters);
+       flash_counter = 0;
+    }
+    
   }
 }
 
@@ -185,6 +224,32 @@ __interrupt void Timer_A (void) {
 #pragma vector=PORT2_VECTOR
 __interrupt void PORT2_ISR(void)
 {
-  P2IFG = 0; // clear interrupt
-  P1OUT |= LCD_BKL;
+  P2IE  &= ~BIT6;     // turn off the interrupt
+  P2IFG = 0;          // clear interrupt
+  
+  
+   
+  /* Use watchdog timer for button debounce */
+  WDTCTL = WDT_ADLY_16;   // Turn on the watchdog timer to detect long press
+                          // after 16ms*8*32KHz/12KHz = 341ms
+  IFG1 &= ~WDTIFG;        // Clear watchdog timer interrupt flag
+  IE1 |= WDTIE;           // Enable watchdog
+  
+  
+  counters.total++;
+  counters.day1++;
+  counters.day2++;
+}
+
+/* This function catches watchdog timer interrupts, which are
+ * set to happen 681ms after the user presses the button.
+ */
+#pragma vector=WDT_VECTOR
+__interrupt void WDT_ISR (void)
+{
+    IE1 &= ~WDTIE;                // Disable interrupts on the watchdog timer
+    IFG1 &= ~WDTIFG;              // Clear the interrupt flag for watchdog timer
+    WDTCTL = WDTPW + WDTHOLD;     // Resume holding the watchdog timer so it doesn't reset the chip
+    P1IE |= BUTTON;               // Re-enable interrupts for the button  
+    P2IE  |= BIT6;                // Re-enable interrupt for "vlotter"
 }
