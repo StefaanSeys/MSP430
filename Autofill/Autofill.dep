@@ -6,39 +6,61 @@
   <configuration>
     <name>Debug</name>
     <outputs>
-      <file>$PROJ_DIR$\libs\LCD_Library.c</file>
-      <file>$PROJ_DIR$\libs\Flash_Library.h</file>
       <file>$PROJ_DIR$\libs\Flash_Library.c</file>
+      <file>$PROJ_DIR$\libs\Flash_Library.h</file>
+      <file>$PROJ_DIR$\libs\LCD_Library.c</file>
       <file>$PROJ_DIR$\libs\LCD_Library.h</file>
+      <file>$PROJ_DIR$\libs\VLO_Library.s43</file>
       <file>$PROJ_DIR$\main.c</file>
       <file>$PROJ_DIR$\libs\VLO_Library.h</file>
-      <file>$PROJ_DIR$\libs\VLO_Library.s43</file>
-      <file>$TOOLKIT_DIR$\inc\msp430g2231.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\Flash_Library.pbi</file>
       <file>$PROJ_DIR$\Debug\Obj\LCD_Library.r43</file>
+      <file>$TOOLKIT_DIR$\inc\intrinsics.h</file>
+      <file>$PROJ_DIR$\Debug\Exe\Autofill.d43</file>
+      <file>$TOOLKIT_DIR$\config\lnk430G2231.xcl</file>
+      <file>$PROJ_DIR$\Debug\List\Autofill.map</file>
+      <file>$TOOLKIT_DIR$\inc\msp430.h</file>
       <file>$TOOLKIT_DIR$\inc\in430.h</file>
       <file>$PROJ_DIR$\Debug\Obj\Flash_Library.r43</file>
-      <file>$TOOLKIT_DIR$\inc\msp430.h</file>
-      <file>$PROJ_DIR$\Debug\Obj\Flash_Library.pbi</file>
-      <file>$TOOLKIT_DIR$\inc\intrinsics.h</file>
-      <file>$PROJ_DIR$\Debug\List\Autofill.map</file>
-      <file>$TOOLKIT_DIR$\config\lnk430G2231.xcl</file>
+      <file>$TOOLKIT_DIR$\inc\msp430g2231.h</file>
       <file>$PROJ_DIR$\Debug\Obj\VLO_Library.r43</file>
-      <file>$PROJ_DIR$\Debug\Exe\Autofill.d43</file>
       <file>$PROJ_DIR$\Debug\Obj\LCD_Library.pbi</file>
       <file>$TOOLKIT_DIR$\lib\dlib\dl430fn.r43</file>
       <file>$PROJ_DIR$\Debug\Obj\main.r43</file>
       <file>$PROJ_DIR$\Debug\Obj\Autofill.pbd</file>
       <file>$PROJ_DIR$\Debug\Obj\main.pbi</file>
-      <file>$PROJ_DIR$\..\Test\main.c</file>
     </outputs>
     <file>
       <name>[ROOT_NODE]</name>
       <outputs>
         <tool>
           <name>XLINK</name>
-          <file> 17 14</file>
+          <file> 10 12</file>
         </tool>
       </outputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\libs\Flash_Library.c</name>
+      <outputs>
+        <tool>
+          <name>BICOMP</name>
+          <file> 7</file>
+        </tool>
+        <tool>
+          <name>ICC430</name>
+          <file> 15</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>BICOMP</name>
+          <file> 1 13 16 14 9</file>
+        </tool>
+        <tool>
+          <name>ICC430</name>
+          <file> 1 13 16 14 9</file>
+        </tool>
+      </inputs>
     </file>
     <file>
       <name>$PROJ_DIR$\libs\LCD_Library.c</name>
@@ -55,34 +77,26 @@
       <inputs>
         <tool>
           <name>BICOMP</name>
-          <file> 3 11 7 9 13</file>
+          <file> 3 13 16 14 9</file>
         </tool>
         <tool>
           <name>ICC430</name>
-          <file> 3 11 7 9 13</file>
+          <file> 3 13 16 14 9</file>
         </tool>
       </inputs>
     </file>
     <file>
-      <name>$PROJ_DIR$\libs\Flash_Library.c</name>
+      <name>$PROJ_DIR$\libs\VLO_Library.s43</name>
       <outputs>
         <tool>
-          <name>BICOMP</name>
-          <file> 12</file>
-        </tool>
-        <tool>
-          <name>ICC430</name>
-          <file> 10</file>
+          <name>A430</name>
+          <file> 17</file>
         </tool>
       </outputs>
       <inputs>
         <tool>
-          <name>BICOMP</name>
-          <file> 1 11 7 9 13</file>
-        </tool>
-        <tool>
-          <name>ICC430</name>
-          <file> 1 11 7 9 13</file>
+          <name>A430</name>
+          <file> 16</file>
         </tool>
       </inputs>
     </file>
@@ -101,26 +115,11 @@
       <inputs>
         <tool>
           <name>BICOMP</name>
-          <file> 7 9 13 5 3 1</file>
+          <file> 16 14 9 6 3 1</file>
         </tool>
         <tool>
           <name>ICC430</name>
-          <file> 7 9 13 5 3 1</file>
-        </tool>
-      </inputs>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\libs\VLO_Library.s43</name>
-      <outputs>
-        <tool>
-          <name>A430</name>
-          <file> 16</file>
-        </tool>
-      </outputs>
-      <inputs>
-        <tool>
-          <name>A430</name>
-          <file> 7</file>
+          <file> 16 14 9 6 3 1</file>
         </tool>
       </inputs>
     </file>
@@ -129,13 +128,13 @@
       <outputs>
         <tool>
           <name>XLINK</name>
-          <file> 14</file>
+          <file> 12</file>
         </tool>
       </outputs>
       <inputs>
         <tool>
           <name>XLINK</name>
-          <file> 15 10 8 16 20 19</file>
+          <file> 11 15 8 17 20 19</file>
         </tool>
       </inputs>
     </file>
@@ -144,7 +143,7 @@
       <inputs>
         <tool>
           <name>BILINK</name>
-          <file> 12 18 22</file>
+          <file> 7 18 22</file>
         </tool>
       </inputs>
     </file>

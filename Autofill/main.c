@@ -54,11 +54,11 @@ R/W to GROUND
  
 // Global variables
 CountStruct counters;             // keeps track of the three counters
-int timer_mode = NORMAL_MODE;     // timer mode
-int dco_delta = 0;                // dco delta = number of 1MHz cycles in 8 VLO cycles
-int level_counter = 0;            // keeps track of the nr of min's that have passed since
+int timer_mode;                   // timer mode
+int dco_delta;                    // dco delta = number of 1MHz cycles in 8 VLO cycles
+int level_counter;                // keeps track of the nr of min's that have passed since
                                   // the last low water detection
-int flash_counter = 0;            // keeps track of the nr of min's since the last flash write   
+int flash_counter;                // keeps track of the nr of min's since the last flash write   
 
 
 void port_init()
@@ -95,7 +95,7 @@ int main()
   WDTCTL = WDTPW + WDTHOLD; // Stop watchdog timer
   
   /* Setup the clock */
-  
+   
   BCSCTL1 = CALBC1_1MHZ;                    // 1MHz cal value
   DCOCTL = CALDCO_1MHZ;                     // 1MHz cal value
   
@@ -115,19 +115,22 @@ int main()
   timer_mode = NORMAL_MODE;
   CCTL0 = 0x00;				    // Disable counter interrupts
   TACTL = TASSEL_1 + MC_1 + ID_3 + TACLR;   // Timer A with ACLK/8, count UP, reset counter
-  TACCR0 = TIMER_1_SEC * 5;                     // Set interval to one minute
+  TACCR0 = TIMER_1_MIN;                     // Set interval to one minute
   CCTL0 = CCIE;		                    // Enable the timer
   
   /* Read the counter values from flash */  
 
   counters = read_counter();
+  counters.total = 1239;
+  counters.day1 = 346;
+  level_counter = 396;
     
 
      
-     LCD_LINE1;
-     lcd_print("Druk op knop");
+     //LCD_LINE1;
+     //lcd_print("Druk op knop");
      
-     __bis_SR_register(LPM3_bits + GIE);
+     //__bis_SR_register(LPM3_bits + GIE);
      
      
      
@@ -136,13 +139,26 @@ int main()
        char times[8];
        lcd_clear();
        LCD_LINE1;
-       lcd_print("2:35");
-       lcd_print("    ");
-       ltoa(counters.total, times, 10);
+       
+       // print the nr of hours before refill
+       int h = (LEVEL_THRESHOLD-level_counter)/60;
+       ltoa(h, times, 10);
+       lcd_print(times);
+       // print the nr of minutes before refill
+       int a = ltoa(LEVEL_THRESHOLD-level_counter - h*60, times, 10);
+       if (a == 1) lcd_print(":0"); else lcd_print(":");
+       lcd_print(times); 
+       
+       
+       a = ltoa(counters.total, times, 10);
+       while ((12-a++) > 0)
+           lcd_print(" ");
        lcd_print(times); 
        LCD_LINE2;
-       lcd_print("1:        ");        
-       ltoa(counters.day1, times, 10);
+       lcd_print("1:");        
+       a = ltoa(counters.day1, times, 10);
+       while ((14-a++) > 0)
+           lcd_print(" ");
        lcd_print(times);
 
        // go back to sleep
@@ -167,17 +183,21 @@ __interrupt void PORT1_ISR(void)
   P1OUT |= LCD_BKL;
     
   /* Reset TimerA such that the LCD BKL will keep burning */
+  CCTL0 = 0;
   TAR = 0;
   
   /* Set the timer to about 1 second for long press detection */
   timer_mode = LONG_BUTTON_PRESS_MODE;
   TACCR0 = TIMER_1_SEC;  
+  CCTL0 = CCIE;
   __bic_SR_register_on_exit(LPM3_bits);   // Wake up the main loop
 }
 
 // Timer interrupt, turn off the LCD
 #pragma vector=TIMERA0_VECTOR
 __interrupt void Timer_A (void) {
+
+  
   
   if (timer_mode == LONG_BUTTON_PRESS_MODE) {    
     timer_mode = TURN_OFF_DISPLAY_MODE;
@@ -192,8 +212,15 @@ __interrupt void Timer_A (void) {
     TACCR0 = TIMER_1_MIN;    
   } else { //normal mode
     
-    /* recalibrate */
+    
+    
+    /* recalibrate and re-init the timer (because the calibration messes it up) */
     dco_delta = TI_measureVLO();   
+    CCTL0 = 0;
+    TACTL = TASSEL_1 + MC_1 + ID_3 + TACLR;   // Timer A with ACLK/8, count UP, reset counter
+    TACCR0 = TIMER_1_MIN;                     // Set interval to one minute
+    CCTL0 = CCIE;		              // Enable the timer
+ 
     
     
     /* check state of water level meter */
@@ -218,6 +245,7 @@ __interrupt void Timer_A (void) {
     }
     
   }
+  
 }
 
 
@@ -251,5 +279,5 @@ __interrupt void WDT_ISR (void)
     IFG1 &= ~WDTIFG;              // Clear the interrupt flag for watchdog timer
     WDTCTL = WDTPW + WDTHOLD;     // Resume holding the watchdog timer so it doesn't reset the chip
     P1IE |= BUTTON;               // Re-enable interrupts for the button  
-    P2IE  |= BIT6;                // Re-enable interrupt for "vlotter"
+    //P2IE  |= BIT6;                // Re-enable interrupt for "vlotter"
 }

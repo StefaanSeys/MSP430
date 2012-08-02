@@ -15,7 +15,7 @@ void lcd_pseudo_8bit_cmd(unsigned char c);
 void lcd_clear(void);
 void lcd_init();
 void lcd_print(char *p);
-char *ltoa(long num, char *str, int radix);
+int ltoa(long num, char *str, int radix);
 
 
 #endif

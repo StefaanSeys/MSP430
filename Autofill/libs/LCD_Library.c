@@ -1,6 +1,20 @@
 #include "LCD_Library.h"
 #include <msp430.h>
 
+void lcd_init()
+{
+    P1OUT = 0;
+    P1DIR = 0xff;
+    lcd_pseudo_8bit_cmd(0x30); //this command is like 8 bit mode command
+    lcd_pseudo_8bit_cmd(0x30); //lcd expect 8bit mode commands at first
+    lcd_pseudo_8bit_cmd(0x30); //for more details, check any 16x2 lcd spec
+    lcd_pseudo_8bit_cmd(0x20);
+    lcd_cmd(0x28);             //4 bit mode command started, set two line
+    lcd_cmd(0x0c);             // Make cursorinvisible
+    lcd_clear();               // Clear screen
+    lcd_cmd(0x6);              // Set entry Mode(auto increment of cursor)
+}
+
 void lcd_data(unsigned char c)
 {
     LCD_RS(1);
@@ -33,29 +47,16 @@ void lcd_clear(void)
     lcd_cmd(0x01);
     __delay_cycles(3000); //3 ms delay
 }
- 
-void lcd_init()
-{
-    P1OUT = 0;
-    P1DIR = 0xff;
-    lcd_pseudo_8bit_cmd(0x30); //this command is like 8 bit mode command
-    lcd_pseudo_8bit_cmd(0x30); //lcd expect 8bit mode commands at first
-    lcd_pseudo_8bit_cmd(0x30); //for more details, check any 16x2 lcd spec
-    lcd_pseudo_8bit_cmd(0x20);
-    lcd_cmd(0x28);             //4 bit mode command started, set two line
-    lcd_cmd(0x0c);             // Make cursorinvisible
-    lcd_clear();               // Clear screen
-    lcd_cmd(0x6);              // Set entry Mode(auto increment of cursor)
-}
+
  
 void lcd_print(char *p)
 {
     while(*p) lcd_data(*p++);
 }
 
-char *ltoa(long num, char *str, int radix) {
+int ltoa(long num, char *str, int radix) {
   char sign = 0;		
-  char temp[33];  //an int can only be 32 bits long		
+  char temp[17];  //an int can only be 32 bits long		
                   //at radix 2 (binary) the string 		
                   //is at most 16 + 1 null long.
 		
@@ -98,5 +99,5 @@ char *ltoa(long num, char *str, int radix) {
   }
 		
   str[str_loc] = 0; // add null termination.		
-  return str;
+  return str_loc;
 }
