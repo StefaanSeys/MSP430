@@ -36,6 +36,8 @@ void lcd_clear(void)
  
 void lcd_init()
 {
+    P1OUT = 0;
+    P1DIR = 0xff;
     lcd_pseudo_8bit_cmd(0x30); //this command is like 8 bit mode command
     lcd_pseudo_8bit_cmd(0x30); //lcd expect 8bit mode commands at first
     lcd_pseudo_8bit_cmd(0x30); //for more details, check any 16x2 lcd spec

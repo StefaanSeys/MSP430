@@ -63,7 +63,7 @@ int flash_counter = 0;            // keeps track of the nr of min's since the la
 
 void port_init()
 {
-    P1DIR = 0xff;
+   
     
     // Set up button (P1.3)
     P1DIR &= ~BUTTON;
@@ -106,9 +106,9 @@ int main()
   BCSCTL1 |= DIVA_3;                        // ACLK divide by 8
   
   /* Setup the Pins on the MCU */
-      
-  lcd_init();    // For some reason, lcd_init has to happen BEFORE port_init !!
+  lcd_init();    // For some reason, lcd_init has to happen BEFORE port_init !!  
   port_init();
+
 
   /* Initiate TimerA */ 
   

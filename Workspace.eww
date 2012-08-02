@@ -7,6 +7,9 @@
   <project>
     <path>$WS_DIR$\Autofill\Autofill.ewp</path>
   </project>
+  <project>
+    <path>$WS_DIR$\Test\Test.ewp</path>
+  </project>
   <batchBuild/>
 </workspace>
 
