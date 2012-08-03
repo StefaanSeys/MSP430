@@ -6,37 +6,46 @@
   <configuration>
     <name>Debug</name>
     <outputs>
-      <file>$TOOLKIT_DIR$\inc\msp430g2231.h</file>
-      <file>$PROJ_DIR$\main.c</file>
-      <file>$TOOLKIT_DIR$\config\lnk430G2231.xcl</file>
-      <file>$PROJ_DIR$\Debug\Obj\main.r43</file>
-      <file>$PROJ_DIR$\Debug\Exe\Test.d43</file>
-      <file>$TOOLKIT_DIR$\inc\in430.h</file>
-      <file>$TOOLKIT_DIR$\lib\dlib\dl430fn.r43</file>
-      <file>$TOOLKIT_DIR$\inc\intrinsics.h</file>
       <file>$PROJ_DIR$\Debug\Obj\main.pbi</file>
+      <file>$PROJ_DIR$\main.c</file>
+      <file>$TOOLKIT_DIR$\inc\msp430g2231.h</file>
+      <file>$PROJ_DIR$\Debug\Exe\Test.d43</file>
+      <file>$PROJ_DIR$\Debug\Obj\main.r43</file>
       <file>$PROJ_DIR$\Debug\Obj\Test.pbd</file>
+      <file>$TOOLKIT_DIR$\lib\dlib\dl430fn.r43</file>
+      <file>$TOOLKIT_DIR$\inc\in430.h</file>
+      <file>$TOOLKIT_DIR$\inc\intrinsics.h</file>
+      <file>$TOOLKIT_DIR$\config\lnk430G2231.xcl</file>
     </outputs>
+    <file>
+      <name>[ROOT_NODE]</name>
+      <outputs>
+        <tool>
+          <name>XLINK</name>
+          <file> 3</file>
+        </tool>
+      </outputs>
+    </file>
     <file>
       <name>$PROJ_DIR$\main.c</name>
       <outputs>
         <tool>
-          <name>BICOMP</name>
-          <file> 8</file>
+          <name>ICC430</name>
+          <file> 4</file>
         </tool>
         <tool>
-          <name>ICC430</name>
-          <file> 3</file>
+          <name>BICOMP</name>
+          <file> 0</file>
         </tool>
       </outputs>
       <inputs>
         <tool>
-          <name>BICOMP</name>
-          <file> 0 5 7</file>
+          <name>ICC430</name>
+          <file> 2 7 8</file>
         </tool>
         <tool>
-          <name>ICC430</name>
-          <file> 0 5 7</file>
+          <name>BICOMP</name>
+          <file> 2 7 8</file>
         </tool>
       </inputs>
     </file>
@@ -45,25 +54,16 @@
       <inputs>
         <tool>
           <name>XLINK</name>
-          <file> 2 3 6</file>
+          <file> 9 4 6</file>
         </tool>
       </inputs>
-    </file>
-    <file>
-      <name>[ROOT_NODE]</name>
-      <outputs>
-        <tool>
-          <name>XLINK</name>
-          <file> 4</file>
-        </tool>
-      </outputs>
     </file>
     <file>
       <name>$PROJ_DIR$\Debug\Obj\Test.pbd</name>
       <inputs>
         <tool>
           <name>BILINK</name>
-          <file> 8</file>
+          <file> 0</file>
         </tool>
       </inputs>
     </file>
